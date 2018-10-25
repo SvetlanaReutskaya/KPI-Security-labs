@@ -16,6 +16,8 @@ namespace Decryption.SubstitutionDecript
             BiGramDict = LoadBiGramStatistic();
             UniGramDict = LoadUniGramStatistic();
             TriGramDict = LoadTriGramStatistic();
+            QuadGramDict = LoadQuadGramStatistic();
+            PentaGramDict = LoadPentaGramStatistic();
         }
         private static readonly LanguageStatisticsHelper _languageStatisticsHelper = new LanguageStatisticsHelper();
 
@@ -25,71 +27,139 @@ namespace Decryption.SubstitutionDecript
         }
 
         public IDictionary<char, double> UniGramDict { get; set; }
-        public IDictionary<string,double> BiGramDict { get; set; }
-        public IDictionary<string,double> TriGramDict { get; set; }
+        public IDictionary<string, double> BiGramDict { get; set; }
+        public IDictionary<string, double> TriGramDict { get; set; }
+        public IDictionary<string, double> QuadGramDict { get; set; }
+        public IDictionary<string, double> PentaGramDict { get; set; }
 
         public IDictionary<char, double> LoadUniGramStatistic()
         {
-            return File.ReadLines("../../../Decryption/SubstitutionDecript/unigram.csv")
+            double sum = File.ReadLines("../../..//Decryption/SubstitutionDecript/ngrams/unigram.csv")
+                .Select(line => line.Split(';')).Sum(line => Convert.ToDouble(line[1]));
+            return File.ReadLines("../../../Decryption/SubstitutionDecript/ngrams/unigram.csv")
                 .Select(line => line.Split(';'))
-                .ToDictionary(line => Convert.ToChar(line[0]), line => Convert.ToDouble(line[1]) / 100);
+                .ToDictionary(line => Convert.ToChar(line[0]), line => Convert.ToDouble(line[1]) / sum);
         }
 
-        public IDictionary<string,double> LoadBiGramStatistic()
+        public IDictionary<string, double> LoadBiGramStatistic()
         {
-            return File.ReadLines("../../../Decryption/SubstitutionDecript/bigram.csv")
+            double sum = File.ReadLines("../../..//Decryption/SubstitutionDecript/ngrams/bigram.csv")
+                .Select(line => line.Split(',')).Sum(line => Convert.ToDouble(line[1]));
+            return File.ReadLines("../../../Decryption/SubstitutionDecript/ngrams/bigram.csv")
                 .Select(line => line.Split(','))
-                .ToDictionary(line => line[0], line => Convert.ToDouble(line[1])/2800000000000);
+                .ToDictionary(line => line[0], line => Convert.ToDouble(line[1]) / sum);
         }
 
-        public IDictionary<string,double> LoadTriGramStatistic()
+        public IDictionary<string, double> LoadTriGramStatistic()
         {
-            return File.ReadLines("../../../Decryption/SubstitutionDecript/trigram.csv")
+            double sum = File.ReadLines("../../..//Decryption/SubstitutionDecript/ngrams/trigram.csv")
+                .Select(line => line.Split(',')).Sum(line => Convert.ToDouble(line[1]));
+            return File.ReadLines("../../../Decryption/SubstitutionDecript/ngrams/trigram.csv")
                 .Select(line => line.Split(','))
-                .ToDictionary(line => line[0], line => Convert.ToDouble(line[1]) / 4500000000);
+                .ToDictionary(line => line[0], line => Convert.ToDouble(line[1]) / sum);
         }
 
-        public IDictionary<char,double> CreateUniGramStatistic(string text)
+        public IDictionary<string, double> LoadQuadGramStatistic()
         {
-            double _len = Convert.ToDouble(text.Count());
-            return text.GroupBy(c => c)
-                .Select(c => new { Char = c.Key, Count = c.Count() })
-                .ToDictionary(x => x.Char, x => x.Count/_len);
+            double sum = File.ReadLines("../../..//Decryption/SubstitutionDecript/ngrams/quadgram1.csv")
+                .Select(line => line.Split(',')).Sum(line => Convert.ToDouble(line[1]));
+            return File.ReadLines("../../../Decryption/SubstitutionDecript/ngrams/quadgram1.csv")
+                .Select(line => line.Split(','))
+                .ToDictionary(line => line[0], line => Convert.ToDouble(line[1]) / sum);
         }
 
-        public IDictionary<string,double> CreateBiGramStatistic(string text)
+        public IDictionary<string, double> LoadPentaGramStatistic()
         {
-            double _len = Convert.ToDouble(text.Count())/2;
+            double sum = File.ReadLines("../../..//Decryption/SubstitutionDecript/ngrams/pentagram1.csv")
+                .Select(line => line.Split(',')).Sum(line => Convert.ToDouble(line[1]));
+            return File.ReadLines("../../../Decryption/SubstitutionDecript/ngrams/pentagram1.csv")
+                .Select(line => line.Split(','))
+                .ToDictionary(line => line[0], line => Convert.ToDouble(line[1]) / sum);
+        }
 
-            ConcurrentDictionary<string, double> biGramDict = new ConcurrentDictionary<string, double>();
-
-            for(int i = 1; i < text.Length; i++)
+        public IDictionary<char, double> CreateUniGramStatistic(string text)
+        {
+            double length = Convert.ToDouble(text.Count());
+            Dictionary<char, double> uniGramDict = new Dictionary<char, double>();
+            foreach(char c in text)
             {
-                char prev = text[i - 1];
-                char curr = text[i];
-                char[] currBlock = { prev, curr };
-                string key = new string(currBlock);
-                biGramDict.AddOrUpdate(key, 1, (id, count) => count + 1);
+                if (uniGramDict.ContainsKey(c))
+                {
+                    uniGramDict[c]++;
+                }
+                else
+                {
+                    uniGramDict[c] = 1;
+                }
             }
-            return biGramDict.ToDictionary(x => x.Key, x => x.Value / _len);
+
+            return uniGramDict.ToDictionary(x => x.Key, x => x.Value / length);
         }
 
-        public IDictionary<string,double> CreateTriGramStatistic(string text)
+        public IDictionary<string, double> CreateBiGramStatistic(string text)
         {
-            double _len = Convert.ToDouble(text.Count())/3;
+            double length = text.Length - 1;
 
-            ConcurrentDictionary<string, double> triGramDict = new ConcurrentDictionary<string, double>();
+            Dictionary<string, double> biGramDict = new Dictionary<string, double>();
 
-            for(int i = 2; i < text.Length; i++)
+            for (int j = 0; j < (text.Length - 1); j++)
             {
-                char prevprev = text[i - 2];
-                char prev = text[i - 1];
-                char curr = text[i];
-                char[] currBlock = { prevprev, prev, curr };
-                string key = new string(currBlock);
-                triGramDict.AddOrUpdate(key, 1, (id, count) => count + 1);
+                string key = text.Substring(j, 2);
+                if (biGramDict.ContainsKey(key))
+                {
+                    biGramDict[key]++;
+                }
+                else
+                {
+                    biGramDict[key] = 1;
+                }
             }
-            return triGramDict.ToDictionary(x => x.Key, x => x.Value / _len);
+
+            return biGramDict.ToDictionary(x => x.Key, x => x.Value / length);
         }
+
+        public IDictionary<string, double> CreateTriGramStatistic(string text)
+        {
+            double length = text.Length - 2;
+
+            Dictionary<string, double> triGramDict = new Dictionary<string, double>();
+
+            for (int j = 0; j < (text.Length - 2); j++)
+            {
+                string key = text.Substring(j, 3);
+                if (triGramDict.ContainsKey(key))
+                {
+                    triGramDict[key]++;
+                }
+                else
+                {
+                    triGramDict[key] = 1;
+                }
+            }
+
+            return triGramDict.ToDictionary(x => x.Key, x => x.Value / length);
+        }
+        public IDictionary<string, double> CreateQuadGramStatistic(string text)
+        {
+            double length = text.Length - 3;
+
+            Dictionary<string, double> quadGramDict = new Dictionary<string, double>();
+
+            for (int j = 0; j < (text.Length - 3); j++)
+            {
+                string key = text.Substring(j, 4);
+                if (quadGramDict.ContainsKey(key))
+                {
+                    quadGramDict[key]++;
+                }
+                else
+                {
+                    quadGramDict[key] = 1;
+                }
+            }
+
+            return quadGramDict.ToDictionary(x => x.Key, x => x.Value / length);
+        }
+
     }
 }
